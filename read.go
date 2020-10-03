@@ -44,7 +44,7 @@
 // the package. Equally important, traversal of other PDF data structures can be implemented
 // in other packages as needed.
 //
-package pdf
+package pdf // import "rsc.io/pdf"
 
 // BUG(rsc): The package is incomplete, although it has been used successfully on some
 // large real-world PDF files.
@@ -76,9 +76,6 @@ import (
 	"strconv"
 )
 
-// DebugOn is responsible for logging messages into stdout. If problems arise during reading, set it true.
-var DebugOn = false
-
 // A Reader is a single PDF file open for reading.
 type Reader struct {
 	f          io.ReaderAt
@@ -102,19 +99,19 @@ func (r *Reader) errorf(format string, args ...interface{}) {
 }
 
 // Open opens a file for reading.
-func Open(file string) (*os.File, *Reader, error) {
+func Open(file string) (*Reader, error) {
+	// TODO: Deal with closing file.
 	f, err := os.Open(file)
 	if err != nil {
 		f.Close()
-		return nil, nil, err
+		return nil, err
 	}
 	fi, err := f.Stat()
 	if err != nil {
 		f.Close()
-		return nil, nil, err
+		return nil, err
 	}
-	reader, err := NewReader(f, fi.Size())
-	return f, reader, err
+	return NewReader(f, fi.Size())
 }
 
 // NewReader opens a file for reading, using the data in f with the given total size.
@@ -333,9 +330,7 @@ func readXrefStreamData(r *Reader, strm stream, table []xref, size int64) ([]xre
 			case 2:
 				table[x] = xref{ptr: objptr{uint32(x), 0}, inStream: true, stream: objptr{uint32(v2), 0}, offset: int64(v3)}
 			default:
-				if DebugOn {
-					fmt.Printf("invalid xref stream type %d: %x\n", v1, buf)
-				}
+				fmt.Printf("invalid xref stream type %d: %x\n", v1, buf)
 			}
 		}
 	}
@@ -762,7 +757,7 @@ func (r *Reader) resolve(parent objptr, x interface{}) Value {
 			def, ok := obj.(objdef)
 			if !ok {
 				panic(fmt.Errorf("loading %v: found %T instead of objdef", ptr, obj))
-				return Value{}
+				//return Value{}
 			}
 			if def.ptr != ptr {
 				panic(fmt.Errorf("loading %v: found %v", ptr, def.ptr))
@@ -841,9 +836,7 @@ func applyFilter(rd io.Reader, name string, param Value) io.Reader {
 		columns := param.Key("Columns").Int64()
 		switch pred.Int64() {
 		default:
-			if DebugOn {
-				fmt.Println("unknown predictor", pred)
-			}
+			fmt.Println("unknown predictor", pred)
 			panic("pred")
 		case 12:
 			return &pngUpReader{r: zr, hist: make([]byte, 1+columns), tmp: make([]byte, 1+columns)}
@@ -854,9 +847,6 @@ func applyFilter(rd io.Reader, name string, param Value) io.Reader {
 
 		switch param.Keys() {
 		default:
-			if DebugOn {
-				fmt.Println("param=", param)
-			}
 			panic("not expected DecodeParms for ascii85")
 		case nil:
 			return decoder
@@ -1051,18 +1041,7 @@ func cryptKey(key []byte, useAES bool, ptr objptr) []byte {
 func decryptString(key []byte, useAES bool, ptr objptr, x string) string {
 	key = cryptKey(key, useAES, ptr)
 	if useAES {
-		s := []byte(x)
-		if len(s) < aes.BlockSize {
-			panic("Encrypted text shorter that AES block size")
-		}
-
-		block, _ := aes.NewCipher(key)
-		iv := s[:aes.BlockSize]
-		s = s[aes.BlockSize:]
-
-		stream := cipher.NewCBCDecrypter(block, iv)
-		stream.CryptBlocks(s, s)
-		x = string(s)
+		panic("AES not implemented")
 	} else {
 		c, _ := rc4.NewCipher(key)
 		data := []byte(x)
@@ -1085,7 +1064,7 @@ func decryptStream(key []byte, useAES bool, ptr objptr, rd io.Reader) io.Reader 
 		rd = &cbcReader{cbc: cbc, rd: rd, buf: make([]byte, 16)}
 	} else {
 		c, _ := rc4.NewCipher(key)
-		rd = &cipher.StreamReader{c, rd}
+		rd = &cipher.StreamReader{S: c, R: rd}
 	}
 	return rd
 }

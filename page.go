@@ -94,7 +94,6 @@ func (p Page) findInherited(key string) Value {
 func (p Page) MediaBox() Value {
 	return p.findInherited("MediaBox")
 }
-
 func (p Page) CropBox() Value {
 	return p.findInherited("CropBox")
 }
@@ -178,9 +177,6 @@ func (f Font) getEncoder() TextEncoding {
 		case "Identity-H":
 			return f.charmapEncoding()
 		default:
-			if DebugOn {
-				println("unknown encoding", enc.Name())
-			}
 			return &nopEncoder{}
 		}
 	case Dict:
@@ -188,9 +184,6 @@ func (f Font) getEncoder() TextEncoding {
 	case Null:
 		return f.charmapEncoding()
 	default:
-		if DebugOn {
-			println("unexpected encoding", enc.String())
-		}
 		return &nopEncoder{}
 	}
 }
@@ -323,14 +316,8 @@ Parse:
 									r = append(r, []rune(utf16Decode(s))...)
 									continue Parse
 								}
-								if DebugOn {
-									fmt.Printf("array %v\n", bfrange.dst)
-								}
-							} else {
-								if DebugOn {
-									fmt.Printf("unknown dst %v\n", bfrange.dst)
-								}
 							}
+
 							r = append(r, noRune)
 							continue Parse
 						}
@@ -340,9 +327,7 @@ Parse:
 				}
 			}
 		}
-		if DebugOn {
-			println("no code space found")
-		}
+
 		r = append(r, noRune)
 		raw = raw[1:]
 	}
@@ -370,18 +355,12 @@ func readCmap(toUnicode Value) *cmap {
 			n = int(stk.Pop().Int64())
 		case "endcodespacerange":
 			if n < 0 {
-				if DebugOn {
-					println("missing begincodespacerange")
-				}
 				ok = false
 				return
 			}
 			for i := 0; i < n; i++ {
 				hi, lo := stk.Pop().RawString(), stk.Pop().RawString()
 				if len(lo) == 0 || len(lo) != len(hi) {
-					if DebugOn {
-						println("bad codespace range")
-					}
 					ok = false
 					return
 				}
@@ -414,9 +393,7 @@ func readCmap(toUnicode Value) *cmap {
 			stk.Pop().Name() // key
 			stk.Push(value)
 		default:
-			if DebugOn {
-				println("interp\t", op)
-			}
+			println("interp\t", op)
 		}
 	})
 	if !ok {
@@ -910,9 +887,6 @@ func (p Page) Content() Content {
 			g.Tf = p.Font(f)
 			enc = g.Tf.Encoder()
 			if enc == nil {
-				if DebugOn {
-					println("no cmap for", f)
-				}
 				enc = &nopEncoder{}
 			}
 			g.Tfs = args[1].Float64()

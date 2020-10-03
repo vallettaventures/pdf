@@ -225,7 +225,7 @@ func (b *buffer) readLiteralString() token {
 	tmp := b.tmp[:0]
 	depth := 1
 Loop:
-	for !b.eof {
+	for {
 		c := b.readByte()
 		switch c {
 		default:

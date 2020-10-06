@@ -59,6 +59,7 @@ func Interpret(strm Value, do func(stk *Stack, op string)) {
 	b.allowStream = false
 	var stk Stack
 	var dicts []dict
+
 Reading:
 	for {
 		tok := b.readToken()
@@ -118,7 +119,10 @@ Reading:
 			}
 		}
 		b.unreadToken(tok)
-		obj := b.readObject()
+		obj, err := b.readObject()
+		if err != nil {
+			return
+		}
 		stk.Push(Value{nil, objptr{}, obj})
 	}
 }

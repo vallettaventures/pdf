@@ -193,6 +193,7 @@ func (r *Reader) Trailer() Value {
 	if r == nil {
 		return Value{}
 	}
+
 	return Value{r, r.trailerptr, r.trailer}
 }
 
@@ -343,6 +344,7 @@ func readXrefStreamData(r *Reader, strm stream, table []xref, size int64) ([]xre
 			}
 		}
 	}
+
 	return table, nil
 }
 

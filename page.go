@@ -918,13 +918,19 @@ func (p Page) Content() Content {
 			for i := 0; i < v.Len(); i++ {
 				x := v.Index(i)
 				if x.Kind() == String {
-					showText(x.RawString())
+					if i == v.Len()-1 {
+						showText(x.RawString())
+						op = "BT"
+						continue
+					} else {
+						showText(x.RawString())
+					}
 				} else {
 					tx := -x.Float64() / 1000 * g.Tfs * g.Th
 					g.Tm = matrix{{1, 0, 0}, {0, 1, 0}, {tx, 0, 1}}.mul(g.Tm)
 				}
 			}
-			//showText("\n")
+			// showText("\n")
 
 		case "TL": // set text leading
 			if len(args) != 1 {

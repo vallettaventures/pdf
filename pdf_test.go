@@ -9,6 +9,7 @@ import (
 	"testing"
 	"path/filepath"
 )
+
 var referenceFirstPage = `TEST FILE 
  
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam 
@@ -17,6 +18,45 @@ erat, sed diam voluptua. At vero eos et accusam et
 TEST 
 SUBTITLE`
 
+var referenceFirstPageWithAddLine = `TEST FILE 
+ 
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam 
+nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam 
+erat, sed diam voluptua. At vero eos et accusam et
+ 
+TEST 
+SUBTITLE`
+
+//
+// this pdf has an object within stream which is handled different!
+// the original implementation calculated the stream but didn't returned the object at resolve
+//
+// @todo: there is an empty line added, still don't know where
+//
+func Test_ReadPdf_v17_linarized_xrefStream(t *testing.T) {
+
+	testFile := "./testdata/story_Word2019-2312-1601712620132-32_Print-Adobe__pdf15_linarized_xrefStream.pdf"
+	totalPages, content := readPdfAndGetFirstPageAsText(testFile)
+	if totalPages != 5 {
+		t.Error("Asser: incorrect numPage .. want=5 <> got " + strconv.Itoa(totalPages))
+	}
+	if referenceFirstPageWithAddLine != content {
+		t.Error("Asser: content different from reference:")
+		t.Error(content)
+	}
+}
+func Test_ReadPdf_v17_linarized_xref(t *testing.T) {
+
+	testFile := "./testdata/story_avepdf-com__pdf17_linarized_xref.pdf"
+	totalPages, content := readPdfAndGetFirstPageAsText(testFile)
+	if totalPages != 5 {
+		t.Error("Asser: incorrect numPage .. want=5 <> got " + strconv.Itoa(totalPages))
+	}
+	if referenceFirstPage != content {
+		t.Error("Asser: content different from reference:")
+		t.Error(content)
+	}
+}
 //
 // this pdf has an array of refs at /Contents
 //	standard:
@@ -27,13 +67,13 @@ SUBTITLE`
 func Test_ReadPdf_v17_trailer_arrayAtPageContents(t *testing.T) {
 
 	testFile := "./testdata/story_Word2019-2312-1712620132_Print-Microsoft__pdf17_trailer_array-at-page-contents.pdf"
-
 	totalPages, content := readPdfAndGetFirstPageAsText(testFile)
 	if totalPages != 5 {
 		t.Error("Asser: incorrect numPage .. want=5 <> got " + strconv.Itoa(totalPages))
 	}
 	if referenceFirstPage != content {
 		t.Error("Asser: content different from reference:")
+		t.Error(content)
 	}
 }
 func Test_ReadPdf_v17_StandardPDFA_trailer(t *testing.T) {
@@ -45,6 +85,7 @@ func Test_ReadPdf_v17_StandardPDFA_trailer(t *testing.T) {
 	}
 	if referenceFirstPage != content {
 		t.Error("Asser: content different from reference:")
+		t.Error(content)
 	}
 }
 func Test_ReadPdf_v17_MinSizePDFA_trailer(t *testing.T) {
@@ -56,6 +97,7 @@ func Test_ReadPdf_v17_MinSizePDFA_trailer(t *testing.T) {
 	}
 	if referenceFirstPage != content {
 		t.Error("Asser: content different from reference")
+		t.Error(content)
 	}
 }
 func Test_ReadPdf_v17_StandardNoPDFA_2trailer(t *testing.T) {
@@ -67,6 +109,7 @@ func Test_ReadPdf_v17_StandardNoPDFA_2trailer(t *testing.T) {
 	}
 	if referenceFirstPage != content {
 		t.Error("Asser: content different from reference")
+		t.Error(content)
 	}
 }
 func Test_ReadPdf_v17_MinSizeNoPDFA_2trailer(t *testing.T) {
@@ -78,13 +121,15 @@ func Test_ReadPdf_v17_MinSizeNoPDFA_2trailer(t *testing.T) {
 	}
 	if referenceFirstPage != content {
 		t.Error("Asser: content different from reference")
+		t.Error(content)
 	}
 }
 //
 // read pdf and return content of first page for quick check
 //
 func readPdfAndGetFirstPageAsText(fileName string) (totalPages int, content string) {
-
+	fmt.Println("read file = " + fileName)
+	
 	f, err := Open(fileName)
 	if err != nil {
 		return 0, err.Error()

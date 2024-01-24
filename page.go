@@ -752,17 +752,46 @@ func (p Page) walkTextBlocks(walker func(enc TextEncoding, x, y float64, s strin
 		}
 	})
 }
-
+//
 // Content returns the page's content.
+//
+// bugfix: 
+//	the /Content may contain an array of refs
+//	this leads to an endless loop
+//
 func (p Page) Content() Content {
+	
+	var text []Text
+	var rect []Rect
+	
+	//fmt.Println("page=",p)
 	strm := p.V.Key("Contents")
+
+	if strm.Len() == 0 {
+		c := p.readContent(strm)
+		text = c.Text
+		rect = c.Rect
+	} else {
+		for i := 0; i < strm.Len(); i++ {
+			strmindex := strm.Index(i)
+			//fmt.Println("stream ",i,"=",strmindex)
+
+			c := p.readContent(strmindex)
+			text = append(text, c.Text...)
+			rect = append(rect, c.Rect...)
+		}	
+	}
+	return Content{text, rect}
+}
+
+func (p Page) readContent(strm Value) Content {
 	var enc TextEncoding = &nopEncoder{}
 
 	var g = gstate{
 		Th:  1,
 		CTM: ident,
 	}
-
+	
 	var text []Text
 	showText := func(s string) {
 		n := 0
@@ -843,9 +872,10 @@ func (p Page) Content() Content {
 
 		case "Q": // restore graphics state
 			n := len(gstack) - 1
-			g = gstack[n]
-			gstack = gstack[:n]
-
+			if n >= 0 {	// bugfix: don't raise an exception
+				g = gstack[n]
+				gstack = gstack[:n]
+			}
 		case "BT": // begin text (reset text matrix and line matrix)
 			g.Tm = ident
 			g.Tlm = g.Tm
@@ -914,23 +944,25 @@ func (p Page) Content() Content {
 			showText(args[0].RawString())
 
 		case "TJ": // show text, allowing individual glyph positioning
-			v := args[0]
-			for i := 0; i < v.Len(); i++ {
-				x := v.Index(i)
-				if x.Kind() == String {
-					if i == v.Len()-1 {
-						showText(x.RawString())
-						op = "BT"
-						continue
+			if len(args) > 0 {	// bugfix: don't raise an exception
+				v := args[0]
+				for i := 0; i < v.Len(); i++ {
+					x := v.Index(i)
+					if x.Kind() == String {
+						if i == v.Len()-1 {
+							showText(x.RawString())
+							op = "BT"
+							continue
+						} else {
+							showText(x.RawString())
+						}
 					} else {
-						showText(x.RawString())
+						tx := -x.Float64() / 1000 * g.Tfs * g.Th
+						g.Tm = matrix{{1, 0, 0}, {0, 1, 0}, {tx, 0, 1}}.mul(g.Tm)
 					}
-				} else {
-					tx := -x.Float64() / 1000 * g.Tfs * g.Th
-					g.Tm = matrix{{1, 0, 0}, {0, 1, 0}, {tx, 0, 1}}.mul(g.Tm)
 				}
+				// showText("\n")
 			}
-			// showText("\n")
 
 		case "TL": // set text leading
 			if len(args) != 1 {

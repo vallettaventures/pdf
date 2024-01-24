@@ -726,8 +726,15 @@ func (v Value) Len() int {
 	}
 	return len(x)
 }
-
+//
+// resolve xrefs
+//	in: the parent and the key or reference to resolve
+//	out: the reference
+//
+//	bugfix: in case the object-ref is within a stream than nothing was returned 
+//
 func (r *Reader) resolve(parent objptr, x interface{}) Value {
+
 	if ptr, ok := x.(objptr); ok {
 		if ptr.id >= uint32(len(r.xref)) {
 			return Value{}
@@ -739,6 +746,7 @@ func (r *Reader) resolve(parent objptr, x interface{}) Value {
 		// var obj object
 		if xref.inStream {
 			strm := r.resolve(parent, xref.stream)
+			
 		Search:
 			for {
 				if strm.Kind() != Stream {
@@ -759,10 +767,11 @@ func (r *Reader) resolve(parent objptr, x interface{}) Value {
 					off, _ := b.readToken().(int64)
 					if uint32(id) == ptr.id {
 						b.seekForward(first + off)
-						_, err := b.readObject()
+						objinstream, err := b.readObject()
 						if err != nil {
 							return Value{}
 						}
+						x = objinstream
 						break Search
 					}
 				}
